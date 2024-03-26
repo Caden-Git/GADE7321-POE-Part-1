@@ -3,21 +3,32 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Net.NetworkInformation;
 using System.Text;
+using TMPro;
 using Unity.VisualScripting;
 using UnityEngine;
 using UnityEngine.AI;
+using UnityEngine.SceneManagement;
 using Random = UnityEngine.Random;
 
 public class AIStateController : MonoBehaviour
 {
     public static NavMeshAgent agent;
     public GameObject redFlag;
-    public GameObject redFinish;
+    public GameObject redBase;
+    public GameObject blueBase;
     public Transform player;
-    public States currentState;
-    private bool inPlayerRange;
-    public bool isFlagPickedUp;
+    public static States currentState;
+    public static bool inPlayerRange;
+    public static bool isFlagPickedUp;
 
+    public static int playerScore;
+    public static int aiScore;
+    public static string winner;
+    public static TMP_Text playerScoreText;
+    public TMP_Text aiScoreText;
+    
+    public GameObject restartUI;
+    
     public enum States
     {
         moveToFlag,
@@ -34,10 +45,14 @@ public class AIStateController : MonoBehaviour
     
     private void Start()
     {
+        Time.timeScale = 1f;
+        aiScore = 0;
         agent = GetComponent<NavMeshAgent>();
         currentState = States.moveToFlag;
         inPlayerRange = false;
         isFlagPickedUp = false;
+        
+        restartUI.SetActive(false);
     }
 
     private void Update()
@@ -50,15 +65,14 @@ public class AIStateController : MonoBehaviour
         else if (currentState == States.follow && inPlayerRange)
         {
             agent.destination = player.transform.position;
-
-            //agent.speed = 3f;
+            
             StartCoroutine(Accelerate());
         }
         else if (currentState == States.touch && isFlagPickedUp)
         {
             redFlag.transform.position = agent.transform.position;
             agent.speed = 3f;
-            agent.destination = redFinish.transform.position;
+            agent.destination = redBase.transform.position;
         }
 
         if (isFlagPickedUp == false)
@@ -88,9 +102,23 @@ public class AIStateController : MonoBehaviour
             currentState = States.touch;
         }
 
-        if (other.CompareTag("RedFinish"))
+        if (other.CompareTag("RedFinish") && isFlagPickedUp && (Vector3.Distance(agent.transform.position, redBase.transform.position) <= 0.5f))
         {
-            //AIScore++;
+            aiScore++;
+
+            aiScoreText.text = aiScore.ToString();
+            
+            if (aiScore == 5)
+            {
+                Debug.Log("ai");
+                winner = "ai";
+            }
+
+            if (aiScore > 5)
+            {
+                aiScore = 5;
+            }
+            Restart();
         }
     }
 
@@ -112,5 +140,18 @@ public class AIStateController : MonoBehaviour
         }
 
         yield return new WaitForSeconds(2);
+    }
+
+    void Restart()
+    {
+        Debug.Log("ai restart");
+        currentState = States.moveToFlag;
+        inPlayerRange = false;
+        isFlagPickedUp = false;
+        agent.transform.position = redBase.transform.position;
+
+        Debug.Log("ai player restart");
+        PlayerController.isFlagPickedUp = false;
+        player.transform.position = blueBase.transform.position;
     }
 }
